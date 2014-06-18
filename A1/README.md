@@ -1,6 +1,7 @@
 Assignment 1
 =====
 
+![alt tag](https://raw.githubusercontent.com/iMiiTH/CPS207/master/A1Screenshot.png)
 The purpose of this assignment was to practice and understand the concepts of inheritance and interfaces. 
 
 The interface MoveableShape.java was used to provide methods for each object that implemented it, allowing for very different objects to interact with eachother.
