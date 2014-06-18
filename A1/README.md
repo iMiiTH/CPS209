@@ -30,7 +30,7 @@ A subclass of Creature, we had to create a smaller, faster more versatile creatu
 The main character that is controlled by the user using the mouse buttons.
 
 ##Running the game.
-You can:
+To run the game, you can:
 * Type make run, to run the makefile 
 * javac GameViewer.java, java GameViewer
 * Add the classes to any IDE and run GameViewer from there.
