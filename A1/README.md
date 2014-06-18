@@ -31,9 +31,9 @@ The main character that is controlled by the user using the mouse buttons.
 
 ##Running the game.
 You can:
-*Type make run, to run the makefile 
-*javac GameViewer.java, java GameViewer
-*Add the classes to any IDE and run GameViewer from there.
+* Type make run, to run the makefile 
+* javac GameViewer.java, java GameViewer
+* Add the classes to any IDE and run GameViewer from there.
 
 ###Controls
 Use the right and left buttons to control the direction of the predator.
