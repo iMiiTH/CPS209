@@ -3,6 +3,8 @@ CPS207
 
 My assignments from CPS207
 
+Each assignment folder has its own respective README file.
+
 ###Assignment 1
 Assignment 1 is a simple pacman-like game. The purpose of the assignment was to practice inheritance and interfaces.
 
