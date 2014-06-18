@@ -1,7 +1,7 @@
-CPS207
+CPS209
 ======
 
-My assignments from CPS207
+My assignments from CPS209
 
 Each assignment folder has its own respective README file.
 
