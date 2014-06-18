@@ -37,11 +37,4 @@ public class GameFrame extends JFrame
       createPanel();
       setSize(FRAME_WIDTH, FRAME_HEIGHT);
    }
-   /**
-    * This method creatues the panel. Separated to reduce clutter.
-    */
-   public void createPanel()
-   {
-      panel = new GamePanel();
-   }
 }
