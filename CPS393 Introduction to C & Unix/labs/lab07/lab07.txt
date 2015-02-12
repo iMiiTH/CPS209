@@ -1,0 +1,46 @@
+CPS393 Lab07
+------------
+
+The following web page Channelcapacity.htm (or alternatively Channelcapacity.pdf) 
+presents two famous formulae for calculating communication capacity of the channel. 
+They are known as Niquist and Shannon formula respectively.
+
+The program NiqSha prompts the user for a communication bandwidth and number of signalling levels
+for Niquist formula. For Shannon formula program promts the user for communication bandwidth
+and the signal to noise ratio. 
+It then calls functions to calculate the corresponding channel capacities, and prints the results.
+
+
+WHAT YOU NEED TO DO
+-------------------
+  1. Try running NiqSha with various valid input (3 values of bandwidth ).
+  2. Copy partially-finished program NiqSha.c into your own space and complete it in
+     accordance with the information below. It should behave like NiqSha.
+  3. Submit your NiqSha.c
+
+
+ERROR CHECKING:
+  None is needed.  You may assume the user enters proper input.
+
+Other Instructions:
+  Your program needs the logarithm for base 2 which is defined in math.h
+  You have to find its name. This is how:
+  Type the following command to find where math.h is located.
+       whereis math.h
+  Once you know where it is, edit it, and search for logarithm functions.
+  Select the proper function to and use it in your program.
+
+COMPILING:
+  gcc may require the -lm flag (link math library), depending on the moon you're 
+  using. 
+
+--------------------------------------------------------------------------------
+If you finish early...
+1. Try running NiqSha with bad input and see what happens.
+2. Copy NiqSha.c to NiqShaM.c .
+3. Modify NiqShaM.c and delete the function prototypes (pretend you forgot to code
+   them.) Then try compiling and see what kind of error message you get.
+4. Modify NiqShaM.c to sometimes use the wrong types (use int instead of double in 
+   various places.) See what kind of error message (if any) and output (if any) 
+   you get.
+--------------------------------------------------------------------------------
