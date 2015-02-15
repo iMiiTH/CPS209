@@ -1,10 +1,9 @@
 /*
- * CPS590 Operating Systems
+ * CPS590 Operating Systems and Design
  * Assignment 1
  * Multithreaded Conway's Game of Life without using pthreads
  * Mitchell Mohorovich
  */
-
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,7 +30,10 @@ typedef struct Stack {
 } Stack;
 
 typedef struct Thread_args {
-   int thread_index;
+   int thread_ind; //thread index 
+   int thread_inc; //thread increment 
+   Grid *mod_grid; //modifying grid
+   Grid *ref_grid; //reference grid 
 } Thread_args;
 
 
@@ -45,64 +47,25 @@ int next_cell_state(Grid *g, int x, int y);
 void fix_coordinates(Grid *g, int *x, int *y); //DON'T WANT ANY SEGMENTATION FAULTS NOW DO WE?!
 int next_state(int c, int n);
 int neighbours_at(Grid *g, int x, int y);
-Thread_args * initialize_thread_args();
-void * populate_args(Thread_args *t, int thread_num, int increment, Grid *ref_grid, Grid* mod_grid);
-void loop_through_threads();
-
-void print_args(Thread_args *args)
-{
-   printf("thread %d\n", args->thread_index);
-}
+int multi_threaded_run(void * arg);
+void single_threaded_run(); //loolwe 2003 in hear. 
 
 const int STACK_SIZE = 65536;
+
+// I know I'm an awful person for using global variables, but like, eh.
 Grid *reference_grid;
 Grid *modifying_grid;
-int thread_grid_index_increment;
-
-void single_threaded_run()
-{
-   int i, j, temp_state;
-   for(i = 0; i<modifying_grid->rows; i++) {
-      for( j = 0; j<modifying_grid->cols; j++) {
-         grid_set(modifying_grid, i, j, next_cell_state(reference_grid, i, j));
-      }
-   }
-}
-
-int multi_threaded_run(void * arg)
-{
-   int thread_number = 0;
-   if(arg != NULL) {
-      thread_number = *((int *)arg);
-   } else {
-      printf("arg is null\n");
-      _exit(0);
-   }
-
-   int start, stop, i, j;
-   start = thread_number * thread_grid_index_increment;
-   stop = (thread_number+1) * thread_grid_index_increment;
-
-   if(stop > modifying_grid->rows) {
-      stop = modifying_grid->rows;
-   }
-
-   for(i = start; i<stop; i++) {
-      for( j = 0; j<modifying_grid->cols; j++) {
-         grid_set(modifying_grid, i, j, next_cell_state(reference_grid, i, j));
-      }
-   }
-
-   _exit(0);
-}
+int thread_grid_index_increment; //how verbose can you goooOOOO?
 
 int main (int argc, char ** argv)
 {
    Grid *grid_a;
    Grid *grid_b;
-   int i;
-   int number_of_threads;
+   int i, number_of_threads, grid_size;
+   unsigned int *cpids;       //keeps track of children's pid's for synchronization
+   Stack *thread_stacks;      // Stack structs for easier readability
 
+   // Argument checking
    if( argc != 3 ) {
       fprintf(stderr, "%s: invalid number of arguments\n", argv[0]);
       fprintf(stderr, "requires: [input file] [number of threads]\n");
@@ -111,53 +74,60 @@ int main (int argc, char ** argv)
    FILE *f = fopen(argv[1], "r");
    if(f==NULL){
       printf("ERROR: Invalid file given.\n");
-      exit(1);
+      exit(ERR_BAD_FILENAME);
    }
 
-   int grid_size;
+   // Reading from the file
    fscanf(f, "%d", &grid_size);
-   printf("size=%d\n", grid_size);
    number_of_threads =  atoi(argv[2]);
    thread_grid_index_increment = ceil( (float)grid_size / (float)number_of_threads);
-   printf("increment= %d\n", thread_grid_index_increment);
 
-   //stacks for threads 
-
+   // Creating the grids 
    grid_a = initialize_grid(grid_size, grid_size);
    grid_b = initialize_grid(grid_size, grid_size);
    if(read_grid(grid_a, f)==ERR_BAD_FILE_FORMAT) {
       printf("Error: Incorrect file contents\n");
+      exit(ERR_BAD_FILE_FORMAT);
    }
 
 
-   Stack *thread_stacks = (Stack *) malloc(sizeof(Stack) * number_of_threads);
-   unsigned int *cpid = (unsigned int *)malloc(sizeof(unsigned int) * number_of_threads);
-
+   // Create stacks for each thread
+   thread_stacks = (Stack *) malloc(sizeof(Stack) * number_of_threads);
+   cpids = (unsigned int *)malloc(sizeof(unsigned int) * number_of_threads);
+   //Populate the stacks
    for(i = 0; i < number_of_threads; i++) {
       thread_stacks[i].stack = (char *)malloc(STACK_SIZE);
       thread_stacks[i].stackTop = thread_stacks[i].stack + STACK_SIZE;
    }
 
-   char *stack;
-   char *stackTop;
-   stack = (char *)malloc(STACK_SIZE);
-   stackTop = stack+STACK_SIZE;
-   
+   // Create array to hold the thread indexes, which just hold i, 
+   // but if need to be outside the scope of the logic for loop or 
+   // else super duper scary things happen.
    int args[number_of_threads];
+   for(i = 0; i < number_of_threads; i++)
+      args[i] = i;
 
    print_grid(grid_a);
    sleep(1);
 
+   // And we have lift off.
+   // This loop toggles between grid_a and grid_b being the reference_grid and the modifying_grid.
+   // It spawns as many threads as the user specifies, and passes the function the thread index.
+   // -> The thread index is what tells the thread which row to traverse over.
+   // It keeps track of the pid's of each thread and continues once they're all dead. RIP in pieces. :'(
+   // It then switches the reference_grid and the modifying grid and continues it again until it's killed. 
    while(1) {
       reference_grid = grid_a;
       modifying_grid = grid_b;
 
       for(i = 0; i < number_of_threads; i++) {
          args[i] = i;
-         cpid[i] = clone(multi_threaded_run, thread_stacks[i].stackTop, CLONE_VM|SIGCHLD, (void *)(&args[i]));
+         cpids[i] = clone(multi_threaded_run, thread_stacks[i].stackTop, CLONE_VM|SIGCHLD, (void *)(&args[i]));
       }
-      for( i = 0; i < number_of_threads; i++) { //synchronize threads
-         waitpid(-1, cpid[i], NULL);
+
+      // Syncrhonize threads.
+      for( i = 0; i < number_of_threads; i++) {
+         waitpid(-1, cpids[i], NULL);
       }
       print_grid(modifying_grid);
       sleep(1);
@@ -167,16 +137,16 @@ int main (int argc, char ** argv)
 
       for(i = 0; i < number_of_threads; i++) {
          args[i] = i;
-         cpid[i] = clone(multi_threaded_run, thread_stacks[i].stackTop, CLONE_VM|SIGCHLD, (void *)(&args[i]));
+         cpids[i] = clone(multi_threaded_run, thread_stacks[i].stackTop, CLONE_VM|SIGCHLD, (void *)(&args[i]));
       }
       for( i = 0; i < number_of_threads; i++) { //synchronize threads
-         waitpid(-1, cpid[i], NULL);
+         waitpid(-1, cpids[i], NULL);
       }
       print_grid(modifying_grid);
       sleep(1);
    }
 
-   /*
+   /* The single threaddd loop.
    while(1){ 
       reference_grid = grid_a;
       modifying_grid = grid_b;
@@ -312,6 +282,12 @@ void print_grid(Grid *g)
    putchar('\n');
 }
 
+/**
+ * For a given coordinate, checks how many neighbours it has.
+ * @param g the given Grid to check
+ * @param x the x coodinate (row)
+ * @param y the y coordinate (column)
+ */
 int next_cell_state(Grid *g, int x, int y)
 {
    int tempx, tempy;
@@ -355,6 +331,11 @@ void fix_coordinates(Grid *g, int *x, int *y)
    *y = tempy; 
 }
 
+/**
+ * Given a number of neighbours, and the current state; gives back the next state.
+ * @param c The current state.
+ * @param n the number of neighbours.
+ */
 int next_state(int c, int n)
 {
    if(n < 2)
@@ -367,6 +348,14 @@ int next_state(int c, int n)
       return c;
 }
 
+
+/**
+ * Given a grid and coordinate, this function counts how many neighbours surround it. 
+ * @param g The current grid
+ * @param x the x coorindate (row)
+ * @param y the y coorindate (column)
+ * @return The number of neighbours the coordinates have
+ */
 int neighbours_at(Grid *g, int x, int y)
 {
    int tempx = x;
@@ -375,15 +364,51 @@ int neighbours_at(Grid *g, int x, int y)
    return grid_at(g, tempx, tempy);
 }
 
-Thread_args * initialize_thread_args()
+/**
+ * This function is sent to threads to calculate the next state for a given number of rows.
+ * The row interval is determined by the thread index, and the increment amount, which is
+ * based on the size of the grid, and the number of threads the user has set.
+ * @param arg A void pointer to the thread index (which is i in the for loop in main)
+ * @return The exit code.
+ */
+int multi_threaded_run(void * arg)
 {
-   return (Thread_args *)malloc(sizeof(Thread_args));
+   int thread_number = 0;
+   if(arg != NULL) {
+      thread_number = *((int *)arg);
+   } else {
+      printf("arg is null\n");
+      _exit(0);
+   }
+
+   int start, stop, i, j;
+   start = thread_number * thread_grid_index_increment;
+   stop = (thread_number+1) * thread_grid_index_increment;
+   
+   //make sure the index doesn't go out of bounds.
+   if(stop > modifying_grid->rows) {
+      stop = modifying_grid->rows;
+   }
+
+   for(i = start; i<stop; i++) {
+      for( j = 0; j<modifying_grid->cols; j++) {
+         grid_set(modifying_grid, i, j, next_cell_state(reference_grid, i, j));
+      }
+   }
+
+   _exit(0);
 }
 
-void * populate_args(Thread_args * t, int thread_num, int increment, Grid *ref_grid, Grid* mod_grid)
+/**
+ * This function is a single threaded version of Conways Game of Life.
+ * It uses global variables: modifying_grid, reference_grid to get the next iteration of the game.
+ */
+void single_threaded_run()
 {
-   t->thread_index = thread_num;
-
-   return (void *)t;
+   int i, j, temp_state;
+   for(i = 0; i<modifying_grid->rows; i++) {
+      for( j = 0; j<modifying_grid->cols; j++) {
+         grid_set(modifying_grid, i, j, next_cell_state(reference_grid, i, j));
+      }
+   }
 }
-
